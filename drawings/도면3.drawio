@@ -1,0 +1,70 @@
+<mxGraphModel>
+	<root>
+		<mxCell id="0"/>
+		<mxCell id="1" parent="0"/>
+		<mxCell id="2" value="필수 서류 목록" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="60" y="30" width="180" height="44" as="geometry"/>
+		</mxCell>
+		<mxCell id="3" value="제출서류 파일명·내용" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="400" y="30" width="200" height="44" as="geometry"/>
+		</mxCell>
+		<mxCell id="4" edge="1" source="2" target="5" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="5e" edge="1" source="3" target="5" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="5" value="요건 항목 순회&#xa;필수 서류 목록에서 항목 하나씩 선택" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="170" y="130" width="300" height="56" as="geometry"/>
+		</mxCell>
+		<mxCell id="6" edge="1" source="5" target="7" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="7" value="파일에서 발견?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+			<mxGeometry x="220" y="230" width="200" height="60" as="geometry"/>
+		</mxCell>
+		<mxCell id="8" edge="1" source="7" target="9" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="520" y="260"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="8l" value="발견" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="435" y="245" width="40" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="9" value="✅ 제출&#xa;위험도: 낮음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="460" y="238" width="120" height="44" as="geometry"/>
+		</mxCell>
+		<mxCell id="10" edge="1" source="7" target="11" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="120" y="260"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="10l" value="미발견" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="130" y="245" width="50" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="11" value="❌ 누락&#xa;위험도: 높음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="40" y="238" width="120" height="44" as="geometry"/>
+		</mxCell>
+		<mxCell id="12" edge="1" source="9" target="13" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="12e" edge="1" source="11" target="13" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="13" value="다음 항목 있음?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+			<mxGeometry x="220" y="360" width="200" height="60" as="geometry"/>
+		</mxCell>
+		<mxCell id="14" edge="1" source="13" target="5" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="560" y="390"/><mxPoint x="560" y="158"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="14l" value="있음" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="432" y="375" width="40" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="15" edge="1" source="13" target="16" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="15l" value="없음" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="326" y="428" width="40" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="16" value="증빙 매트릭스 생성 완료" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="180" y="460" width="280" height="44" as="geometry"/>
+		</mxCell>
+	</root>
+</mxGraphModel>
+

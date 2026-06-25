@@ -1,0 +1,135 @@
+<mxGraphModel>
+	<root>
+		<mxCell id="0"/>
+		<mxCell id="1" parent="0"/>
+
+		<!-- 시작: 제출서류 텍스트 입력 -->
+		<mxCell id="2" value="제출서류 텍스트 입력" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="200" y="30" width="220" height="44" as="geometry"/>
+		</mxCell>
+
+		<!-- 화살표: 시작 → ① -->
+		<mxCell id="3" edge="1" source="2" target="4" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+
+		<!-- ① 날짜 패턴 탐지 -->
+		<mxCell id="4" value="① 날짜 패턴 탐지&#xa;YYYY.MM.DD / YYYY년 MM월 DD일 정규식" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="160" y="120" width="300" height="56" as="geometry"/>
+		</mxCell>
+
+		<!-- 화살표: ① → 패턴 발견? -->
+		<mxCell id="5" edge="1" source="4" target="6" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+
+		<!-- 패턴 발견? -->
+		<mxCell id="6" value="패턴 발견?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+			<mxGeometry x="210" y="220" width="200" height="60" as="geometry"/>
+		</mxCell>
+
+		<!-- 미발견 → 날짜 없음 -->
+		<mxCell id="7" edge="1" source="6" target="8" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="100" y="250"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="7l" value="미발견" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="108" y="235" width="50" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="8" value="날짜 없음&#xa;(탐지 종료)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+			<mxGeometry x="20" y="228" width="120" height="44" as="geometry"/>
+		</mxCell>
+
+		<!-- 발견 → ② -->
+		<mxCell id="9" edge="1" source="6" target="10" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="9l" value="발견" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="322" y="284" width="40" height="20" as="geometry"/>
+		</mxCell>
+
+		<!-- ② 날짜 파싱 -->
+		<mxCell id="10" value="② 날짜 파싱&#xa;문자열 → datetime 객체 변환" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="160" y="330" width="300" height="56" as="geometry"/>
+		</mxCell>
+
+		<!-- 화살표: ② → 파싱 성공? -->
+		<mxCell id="11" edge="1" source="10" target="12" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+
+		<!-- 파싱 성공? -->
+		<mxCell id="12" value="파싱 성공?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+			<mxGeometry x="210" y="430" width="200" height="60" as="geometry"/>
+		</mxCell>
+
+		<!-- 파싱 실패 → 형식 오류 경고 -->
+		<mxCell id="13" edge="1" source="12" target="14" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="520" y="460"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="13l" value="실패" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="430" y="445" width="40" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="14" value="⚠️ 형식 오류&#xa;건너뜀" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="460" y="438" width="140" height="44" as="geometry"/>
+		</mxCell>
+
+		<!-- 파싱 성공 → ③ -->
+		<mxCell id="15" edge="1" source="12" target="16" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="15l" value="성공" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="322" y="494" width="40" height="20" as="geometry"/>
+		</mxCell>
+
+		<!-- ③ 마감일과 비교 -->
+		<mxCell id="16" value="③ 마감일과 비교&#xa;추출 날짜 vs 접수 마감일(deadline)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="160" y="540" width="300" height="56" as="geometry"/>
+		</mxCell>
+
+		<!-- 화살표: ③ → 마감일 초과? -->
+		<mxCell id="17" edge="1" source="16" target="18" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+
+		<!-- 마감일 초과? -->
+		<mxCell id="18" value="마감일 초과?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=13;" vertex="1" parent="1">
+			<mxGeometry x="210" y="640" width="200" height="60" as="geometry"/>
+		</mxCell>
+
+		<!-- 이내 → 정상 -->
+		<mxCell id="19" edge="1" source="18" target="20" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="100" y="670"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="19l" value="이내" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="108" y="655" width="40" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="20" value="🟢 정상&#xa;위험도: 낮음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="20" y="648" width="120" height="44" as="geometry"/>
+		</mxCell>
+
+		<!-- 초과 → 오류 -->
+		<mxCell id="21" edge="1" source="18" target="22" parent="1">
+			<mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="520" y="670"/></Array></mxGeometry>
+		</mxCell>
+		<mxCell id="21l" value="초과" style="text;html=1;fontSize=11;" vertex="1" parent="1">
+			<mxGeometry x="430" y="655" width="40" height="20" as="geometry"/>
+		</mxCell>
+		<mxCell id="22" value="🔴 오류&#xa;위험도: 높음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="460" y="648" width="120" height="44" as="geometry"/>
+		</mxCell>
+
+		<!-- 정상·오류 → 결과 분류 출력 -->
+		<mxCell id="23" edge="1" source="20" target="24" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+		<mxCell id="23e" edge="1" source="22" target="24" parent="1">
+			<mxGeometry relative="1" as="geometry"/>
+		</mxCell>
+
+		<!-- 결과 분류 출력 -->
+		<mxCell id="24" value="위험도 분류 결과 출력&#xa;정상 / 경고 / 오류" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="160" y="750" width="300" height="56" as="geometry"/>
+		</mxCell>
+
+	</root>
+</mxGraphModel>

@@ -1,0 +1,94 @@
+<mxGraphModel>
+	<root>
+		<mxCell id="0"/>
+		<mxCell id="1" parent="0"/>
+		<mxCell id="2" value="증빙 매트릭스 출력 예시" style="text;html=1;fontSize=15;fontStyle=1;align=center;" vertex="1" parent="1">
+			<mxGeometry x="140" y="20" width="360" height="30" as="geometry"/>
+		</mxCell>
+		<!-- 헤더 -->
+		<mxCell id="3" value="요건 (공고문)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="40" y="60" width="140" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="4" value="필요 증빙" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="180" y="60" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="5" value="제출 여부" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="300" y="60" width="100" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="6" value="위험도" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="400" y="60" width="80" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="7" value="조치" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="480" y="60" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<!-- 행1: 정상 -->
+		<mxCell id="8" value="졸업예정증명서" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="40" y="96" width="140" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="9" value="졸업예정증명서" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="180" y="96" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="10" value="✅ 제출" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="300" y="96" width="100" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="11" value="🟢 낮음" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="400" y="96" width="80" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="12" value="통과" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="480" y="96" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<!-- 행2: 누락 -->
+		<mxCell id="13" value="학교장 추천서" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="40" y="132" width="140" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="14" value="학교장 추천서" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="180" y="132" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="15" value="❌ 누락" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="300" y="132" width="100" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="16" value="🔴 높음" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="400" y="132" width="80" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="17" value="보완 필요" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="480" y="132" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<!-- 행3: 개인정보 -->
+		<mxCell id="18" value="개인정보 마스킹" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="40" y="168" width="140" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="19" value="주민번호 뒷자리" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="180" y="168" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="20" value="⚠️ 노출 의심" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="300" y="168" width="100" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="21" value="🔴 높음" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="400" y="168" width="80" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="22" value="마스킹 필요" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="480" y="168" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<!-- 행4: 날짜 오류 -->
+		<mxCell id="23" value="자격증 취득일" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="40" y="204" width="140" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="24" value="마감일 이전 취득" style="rounded=0;whiteSpace=wrap;html=1;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="180" y="204" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="25" value="⚠️ 기준 초과" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="300" y="204" width="100" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="26" value="🟡 중간" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="400" y="204" width="80" height="36" as="geometry"/>
+		</mxCell>
+		<mxCell id="27" value="날짜 확인" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+			<mxGeometry x="480" y="204" width="120" height="36" as="geometry"/>
+		</mxCell>
+		<!-- 다운로드 버튼 -->
+		<mxCell id="28" value="📥 전체 결과 엑셀 다운로드" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+			<mxGeometry x="180" y="260" width="280" height="36" as="geometry"/>
+		</mxCell>
+	</root>
+</mxGraphModel>
+
