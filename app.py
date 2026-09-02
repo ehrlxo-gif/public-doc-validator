@@ -10,9 +10,58 @@ import pandas as pd
 import pdfplumber
 import streamlit as st
 
+from hwpx_parser import load_hwpx, extract_instruction_hints
+
 # ─── 상수 ────────────────────────────────────────────────────
 MAX_FILE_SIZE   = 10 * 1024 * 1024   # 10 MB
 SESSION_TIMEOUT = 30 * 60            # 30분
+
+# ─── 워드프로세서 실기 채점 기준표 ──────────────────────────────
+# 이미지로 제공된 감점표를 그대로 코드화한 것. 항목별로:
+#  - "누락": 해당 요소를 아예 안 만들었을 때 감점
+#  - "미수정": 만들긴 했는데 지시사항과 다르게(최대 감점 한도 내에서) 틀렸을 때 감점
+#  - "세부": 구성요소 1개당 감점 범위(차등)
+WORD_EXAM_RUBRIC = {
+    "다단(단 설정)": {"누락": 5, "미수정": 3, "세부": None,
+                    "설명": "예: 꼬리말 누락 -5 / 꼬리말은 만들었는데 색상 등을 잘못 지정 -3"},
+    "쪽 테두리":     {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "제목(1)":       {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "제목(2)":       {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "제목(3)":       {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "누름틀":        {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "문단 첫 글자 장식": {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "스타일":        {"누락": 5, "미수정": 3, "세부": None, "설명": "제목(1)/(2) 등 하나라도 틀리면 각각 -3점 식으로 누적"},
+    "표":            {"누락": 15, "미수정": 10, "세부": (1, 3),
+                    "설명": "표 자체를 안 만들면 -15. 만들었으면 구성요소(테두리/배경/정렬 등) 1개당 1~3점 차등 감점, 최대 -10 (블록계산식과 캡션은 별도 항목)"},
+    "차트":          {"누락": 15, "미수정": 10, "세부": (1, 3),
+                    "설명": "차트 자체를 안 만들면 -15. 만들었으면 구성요소 1개당 1~3점 차등 감점, 최대 -10"},
+    "블록 계산식":    {"누락": 5, "미수정": 3, "세부": None, "설명": "표의 감점 항목에서 제외되는 별도 채점 요소"},
+    "캡션":          {"누락": 5, "미수정": 3, "세부": None, "설명": "표의 감점 항목에서 제외되는 별도 채점 요소"},
+    "각주":          {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "하이퍼링크":     {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "글상자":        {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "쪽 번호":        {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "머리말":        {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+    "꼬리말":        {"누락": 5, "미수정": 3, "세부": None, "설명": None},
+}
+
+# 표/차트 외 '기능' 항목의 일반 규칙 (모든 개별 기능에 공통 적용)
+WORD_EXAM_FUNC_MISSING = 5    # 기능 누락 시 감점
+WORD_EXAM_FUNC_WRONG   = 3    # 기능은 만들었지만 미수정(지시사항과 다름) 시 감점
+
+# 페이지/오탈자 등 별도 규칙
+WORD_EXAM_PAGE_OVERFLOW = 5   # 2쪽 이상 생성 시(실격 아님, 감점만) 감점
+WORD_EXAM_TYPO_WORD     = 3   # 오탈자(단어) 1개당 감점
+WORD_EXAM_TYPO_HANJA    = 3   # 잘못된 한자 1개당 감점
+WORD_EXAM_TRAILING_BREAK = 1  # 문서 맨 끝 강제 개행 1줄 존재 시 감점될 가능성 있음(케바케)
+WORD_EXAM_TYPO_PARA_CAP  = "문단별 최대 감점 있음 (구체적 상한은 시행처 공고 기준 확인 필요)"
+
+# 채점 3단계 안내 (참고용 텍스트, 자동 판정 대상 아님)
+WORD_EXAM_STAGES = [
+    "1단계 - 컴퓨터 채점: 컴퓨터 프로그램으로 채점 — 일정 점수 넘는 답안만 2단계로 감",
+    "2단계 - 수작업 채점",
+    "3단계 - 최종 점검",
+]
 
 # ─── 로깅 설정 ───────────────────────────────────────────────
 logging.basicConfig(
@@ -104,6 +153,48 @@ section[data-testid="stSidebar"] > div { padding-top: 0 !important; }
     .stat-grid { grid-template-columns:repeat(2,1fr) !important; }
     .result-table { font-size:11px !important; }
     .result-table td, .result-table th { padding:8px 8px !important; }
+}
+
+/* ── 다크모드 브라우저에서도 라이트 테마 강제 (텍스트 안 보이는 문제 방지) ── */
+:root, .stApp, [data-testid="stAppViewContainer"] {
+    color-scheme: light !important;
+}
+.stApp, .main, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+    background: #f1f5f9 !important;
+    color: #1f2937 !important;
+}
+.stApp p, .stApp span, .stApp label, .stApp div,
+.stMarkdown, [data-testid="stCaptionContainer"],
+[data-testid="stWidgetLabel"] p, [data-testid="stWidgetLabel"] label {
+    color: #1f2937 !important;
+}
+[data-testid="stCaptionContainer"] p, .stCaption, small {
+    color: #6b7280 !important;
+}
+/* 라디오/체크박스/슬라이더/넘버인풋 등 위젯 컨테이너 배경 */
+[data-testid="stRadio"], [data-testid="stCheckbox"],
+[data-testid="stNumberInput"], [data-testid="stSlider"],
+[data-testid="stExpander"] {
+    background: transparent !important;
+}
+[data-testid="stExpander"] summary {
+    color: #1f2937 !important;
+    background: #ffffff !important;
+}
+[data-testid="stExpander"] details {
+    background: #ffffff !important;
+    border-radius: 8px !important;
+}
+[data-testid="stNumberInput"] input {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+}
+/* 사이드바는 원래 어두운 배경이므로 흰 글자 유지 */
+section[data-testid="stSidebar"] * {
+    color: #ffffff !important;
+}
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+    color: rgba(255,255,255,0.6) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -219,6 +310,207 @@ def detect_dates(text: str, deadline: datetime) -> list[dict]:
             except Exception:
                 pass
     return issues
+
+
+def score_word_exam(selections: dict) -> tuple[list[dict], int]:
+    """
+    워드프로세서 실기 채점기.
+    selections: {
+        항목명: {"status": "정상"|"누락"|"미수정", "세부감점": int(선택)},
+        ...
+        "_page_overflow": bool,
+        "_typo_words": int,
+        "_typo_hanja": int,
+        "_trailing_break": bool,
+    }
+    반환: (감점 상세 rows, 총 감점)
+    """
+    rows: list[dict] = []
+    total = 0
+
+    for name, rule in WORD_EXAM_RUBRIC.items():
+        sel = selections.get(name, {})
+        status = sel.get("status", "정상")
+
+        if status == "누락":
+            penalty = rule["누락"]
+            total += penalty
+            rows.append({
+                "항목": name, "상태": "❌ 누락", "감점": f"-{penalty}점",
+                "_lv": "err", "비고": rule["설명"] or "-"
+            })
+        elif status == "미수정":
+            if rule["세부"]:
+                lo, hi = rule["세부"]
+                penalty = sel.get("세부감점", hi)
+                penalty = max(lo, min(hi, penalty))
+            else:
+                penalty = rule["미수정"]
+            total += penalty
+            rows.append({
+                "항목": name, "상태": "⚠️ 미수정(오류)", "감점": f"-{penalty}점",
+                "_lv": "warn", "비고": rule["설명"] or "-"
+            })
+        else:
+            rows.append({
+                "항목": name, "상태": "✅ 정상", "감점": "0점",
+                "_lv": "ok", "비고": "-"
+            })
+
+    # 페이지 초과
+    if selections.get("_page_overflow"):
+        total += WORD_EXAM_PAGE_OVERFLOW
+        rows.append({
+            "항목": "페이지 초과(2쪽 이상 생성)", "상태": "❌ 위반",
+            "감점": f"-{WORD_EXAM_PAGE_OVERFLOW}점", "_lv": "err",
+            "비고": "실격 아님, 감점만 적용"
+        })
+
+    # 오탈자(단어)
+    n_typo = selections.get("_typo_words", 0)
+    if n_typo:
+        p = n_typo * WORD_EXAM_TYPO_WORD
+        total += p
+        rows.append({
+            "항목": "오탈자(단어)", "상태": f"{n_typo}개 발견",
+            "감점": f"-{p}점", "_lv": "err",
+            "비고": f"1개당 {WORD_EXAM_TYPO_WORD}점, {WORD_EXAM_TYPO_PARA_CAP}"
+        })
+
+    # 한자 오류
+    n_hanja = selections.get("_typo_hanja", 0)
+    if n_hanja:
+        p = n_hanja * WORD_EXAM_TYPO_HANJA
+        total += p
+        rows.append({
+            "항목": "한자 오류", "상태": f"{n_hanja}개 발견",
+            "감점": f"-{p}점", "_lv": "err",
+            "비고": f"1개당 {WORD_EXAM_TYPO_HANJA}점"
+        })
+
+    # 문서 끝 강제 개행
+    if selections.get("_trailing_break"):
+        rows.append({
+            "항목": "문서 맨 끝 강제 개행(1줄)", "상태": "⚠️ 존재",
+            "감점": f"최대 -{WORD_EXAM_TRAILING_BREAK}점 가능",
+            "_lv": "warn", "비고": "계산상 -1점으로 처리되는 경우가 있음(확정 아님)"
+        })
+
+    return rows, total
+
+
+# ─── hwpx 자동 대조 채점 ─────────────────────────────────────
+
+@st.cache_data(show_spinner=False)
+def _cached_load_hwpx(file_bytes: bytes):
+    """hwpx 파싱 결과 캐시. 실패 시 (None, 에러메시지)."""
+    try:
+        doc = load_hwpx(file_bytes)
+        return doc, ""
+    except Exception as exc:
+        return None, f"hwpx 파일을 읽을 수 없습니다: {exc}"
+
+
+def get_hwpx_doc(f):
+    f.seek(0)
+    return _cached_load_hwpx(f.read())
+
+
+def auto_check_hwpx(instruction_text: str, doc) -> list[dict]:
+    """
+    지시사항 텍스트에서 뽑은 힌트와 hwpx 구조를 대조해서
+    자동으로 확인 가능한 항목들을 검출 리포트로 만든다.
+    이건 '없다/있다' 및 '숫자가 지시사항 안 어딘가에 등장하는지' 수준의
+    보조 확인이며, 최종 판단은 사람이 표를 보고 확정해야 한다.
+    """
+    hints = extract_instruction_hints(instruction_text)
+    rows: list[dict] = []
+
+    def add(item, ok, detail):
+        rows.append({
+            "항목": item,
+            "상태": "✅ 검출됨" if ok else "❌ 미검출",
+            "_lv": "ok" if ok else "err",
+            "세부내용": detail
+        })
+
+    # 표
+    if hints.get("표_요구"):
+        if doc.tables:
+            t = doc.tables[0]
+            border = t.border or {}
+            b_desc = ", ".join(
+                f'{k}:{v["type"]}/{v["width_mm"]}mm/{v["color"]}'
+                for k, v in border.items()
+            ) or "정보 없음"
+            add("표", True,
+                f'{t.row_cnt}행×{t.col_cnt}열, 크기 {t.outer_width_mm}×{t.outer_height_mm}mm, '
+                f'캡션 {"있음(" + str(t.caption_side) + ")" if t.has_caption else "없음"}, 테두리[{b_desc}]')
+        else:
+            add("표", False, "지시사항에 표가 언급되었지만 문서에서 표를 찾지 못했습니다.")
+
+    # 차트
+    if hints.get("차트_요구"):
+        has_chart = any(c.exists for c in doc.charts)
+        add("차트", has_chart,
+            f'차트 XML {"발견" if has_chart else "미발견"} '
+            f'({[c.raw_xml_path for c in doc.charts if c.exists]})')
+
+    # 단(컬럼) 설정
+    if hints.get("단수") or hints.get("단간격_mm"):
+        multi_col = [c for c in doc.columns if c.col_count and c.col_count > 1]
+        if multi_col:
+            c = multi_col[0]
+            gap_ok = ""
+            if hints.get("단간격_mm") and c.same_gap_mm is not None:
+                diff = abs(c.same_gap_mm - hints["단간격_mm"])
+                gap_ok = " (지시사항 값과 일치)" if diff < 0.5 else \
+                         f" (지시사항 {hints['단간격_mm']}mm ≠ 문서 {c.same_gap_mm}mm — 확인 필요)"
+            add("단(컬럼) 설정", True, f'{c.col_count}단, 간격 {c.same_gap_mm}mm{gap_ok}')
+        else:
+            add("단(컬럼) 설정", False, "지시사항에 다단 구성이 언급되었지만 2단 이상 구간을 찾지 못했습니다.")
+
+    # 문단 첫 글자 장식
+    if hints.get("첫글자장식_요구"):
+        exists = any(d.exists for d in doc.dropcaps)
+        style = next((d.style for d in doc.dropcaps if d.exists), None)
+        add("문단 첫 글자 장식", exists, f"스타일: {style}" if exists else "미검출")
+
+    # 각주
+    if hints.get("각주_요구"):
+        add("각주", doc.footnotes.count > 0, f"{doc.footnotes.count}개 검출")
+
+    # 하이퍼링크
+    if hints.get("하이퍼링크_요구"):
+        add("하이퍼링크", bool(doc.hyperlinks.urls), f"검출된 URL: {doc.hyperlinks.urls or '없음'}")
+
+    # 누름틀
+    if hints.get("누름틀_요구"):
+        add("누름틀", doc.fields.count > 0, f"{doc.fields.count}개 검출 (타입: {doc.fields.types})")
+
+    # 머리말/꼬리말
+    if hints.get("머리말_요구"):
+        add("머리말", doc.header_footer.has_header, "검출됨" if doc.header_footer.has_header else "미검출")
+    if hints.get("꼬리말_요구"):
+        add("꼬리말", doc.header_footer.has_footer, "검출됨" if doc.header_footer.has_footer else "미검출")
+
+    # 쪽번호
+    if hints.get("쪽번호_요구"):
+        add("쪽 번호", doc.page_num.exists,
+            f"위치: {doc.page_num.position}, 모양: {doc.page_num.format_type}" if doc.page_num.exists else "미검출")
+
+    # 캡션 (표 안에 포함되어 있지만 지시사항에 별도로 강조되면 별도 표기)
+    if hints.get("캡션_요구") and doc.tables:
+        t = doc.tables[0]
+        add("캡션", t.has_caption, f"위치: {t.caption_side}" if t.has_caption else "미검출")
+
+    if not rows:
+        rows.append({
+            "항목": "자동 대조", "상태": "ℹ️ 힌트 없음", "_lv": "info",
+            "세부내용": "지시사항 텍스트에서 자동 대조 가능한 키워드(표/차트/단/각주/하이퍼링크/누름틀/머리말/꼬리말/쪽번호 등)를 찾지 못했습니다."
+        })
+
+    return rows
 
 
 def badge_html(level: str, text: str) -> str:
@@ -660,3 +952,141 @@ if run_btn:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
+
+# ─── 워드프로세서 실기 채점기 (별도 섹션) ───────────────────────
+st.markdown("<br><hr>", unsafe_allow_html=True)
+st.markdown('<div class="section-title">⌨️ 워드프로세서 실기 자동 감점 계산기</div>',
+            unsafe_allow_html=True)
+
+# ── 1단계: 지시사항 PDF + 작성한 hwpx 업로드 → 자동 대조 ──
+st.markdown("**① 지시사항 PDF와 작성한 hwpx 파일을 올리면 일부 항목을 자동으로 대조합니다**")
+we_up_col1, we_up_col2 = st.columns(2)
+with we_up_col1:
+    instr_pdf = st.file_uploader("지시사항 PDF", type=["pdf"], key="we_instr_pdf")
+with we_up_col2:
+    answer_hwpx = st.file_uploader("작성한 hwpx 파일", type=["hwpx"], key="we_answer_hwpx")
+
+if instr_pdf and answer_hwpx:
+    if st.button("🔎 자동 대조 실행", use_container_width=True, key="we_autocheck_btn"):
+        instr_text, instr_err = get_text(instr_pdf)
+        hwpx_doc, hwpx_err = get_hwpx_doc(answer_hwpx)
+
+        if instr_err:
+            st.warning(f"지시사항 PDF — {instr_err}")
+        if hwpx_err:
+            st.error(hwpx_err)
+
+        if instr_text and hwpx_doc is not None:
+            auto_rows = auto_check_hwpx(instr_text, hwpx_doc)
+            auto_table_rows = [
+                [safe(r["항목"]), safe(r["상태"]), badge_html(r["_lv"], safe(r["상태"])), safe(r["세부내용"])]
+                for r in auto_rows
+            ]
+            st.markdown(
+                build_table(["항목", "판정", "상태", "세부내용"], auto_table_rows),
+                unsafe_allow_html=True
+            )
+            st.caption(
+                "⚠️ 이 대조는 '표/차트/각주/하이퍼링크 등 요소가 존재하는지'와 지시사항에 등장한 숫자와의 "
+                "단순 일치 여부만 확인합니다. 서식이 지시사항과 세밀하게 일치하는지(정확한 색상·정렬·글꼴 등)는 "
+                "아래 체크리스트에서 직접 확인 후 선택해주세요."
+            )
+            with st.expander("🔧 원본 구조 상세 보기 (디버깅용)"):
+                st.write("표:", hwpx_doc.tables)
+                st.write("단(컬럼):", hwpx_doc.columns)
+                st.write("차트:", hwpx_doc.charts)
+                st.write("페이지 설정:", hwpx_doc.page_setup)
+                st.write("쪽번호:", hwpx_doc.page_num)
+                st.write("머리말/꼬리말:", hwpx_doc.header_footer)
+                st.write("누름틀:", hwpx_doc.fields)
+                st.write("스타일:", hwpx_doc.styles)
+        else:
+            st.error("지시사항 PDF 또는 hwpx 파일에서 내용을 읽지 못해 자동 대조를 진행할 수 없습니다.")
+else:
+    st.info("지시사항 PDF와 작성한 hwpx 파일을 모두 올리면 자동 대조 버튼이 나타납니다. "
+            "(자동 대조 없이 아래 체크리스트만으로 감점 계산도 가능합니다)")
+
+st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("**② 최종 확인 후 아래 체크리스트로 감점을 계산하세요**")
+st.caption("각 항목의 상태를 선택하면 채점 기준표에 따라 감점이 자동 합산됩니다. "
+           "표/차트는 '미수정'일 때 구성요소 개수만큼 슬라이더로 세부 감점을 조정하세요.")
+
+with st.expander("📋 채점 3단계 안내 보기"):
+    for s in WORD_EXAM_STAGES:
+        st.markdown(f"- {s}")
+
+we_selections: dict = {}
+we_cols = st.columns(2)
+_rubric_items = list(WORD_EXAM_RUBRIC.items())
+_half = (len(_rubric_items) + 1) // 2
+
+for col_idx, chunk in enumerate([_rubric_items[:_half], _rubric_items[_half:]]):
+    with we_cols[col_idx]:
+        for name, rule in chunk:
+            status = st.radio(
+                name, ["정상", "미수정", "누락"],
+                horizontal=True, key=f"we_status_{name}"
+            )
+            entry = {"status": status}
+            if status == "미수정" and rule["세부"]:
+                lo, hi = rule["세부"]
+                entry["세부감점"] = st.slider(
+                    f"　↳ {name} 세부 감점(구성요소 오류 정도)",
+                    min_value=lo, max_value=WORD_EXAM_RUBRIC[name]["미수정"],
+                    value=hi, key=f"we_detail_{name}"
+                )
+            we_selections[name] = entry
+            if rule["설명"]:
+                st.caption(f"　↳ {rule['설명']}")
+
+st.markdown("**기타 감점 항목**")
+we_c1, we_c2, we_c3, we_c4 = st.columns(4)
+with we_c1:
+    we_selections["_page_overflow"] = st.checkbox("2쪽 이상 생성됨")
+with we_c2:
+    we_selections["_typo_words"] = st.number_input("오탈자(단어) 개수", min_value=0, value=0, step=1)
+with we_c3:
+    we_selections["_typo_hanja"] = st.number_input("한자 오류 개수", min_value=0, value=0, step=1)
+with we_c4:
+    we_selections["_trailing_break"] = st.checkbox("문서 끝 강제 개행 존재")
+
+if st.button("🧮 감점 계산하기", use_container_width=True):
+    we_rows, we_total = score_word_exam(we_selections)
+
+    st.markdown(
+        f'<div style="background:{"#fee2e2" if we_total>0 else "#dcfce7"};'
+        f'border-radius:10px;padding:16px;text-align:center;margin:12px 0;'
+        f'border-top:3px solid {"#dc2626" if we_total>0 else "#16a34a"};">'
+        f'<div style="font-size:28px;font-weight:700;color:{"#dc2626" if we_total>0 else "#16a34a"};">'
+        f'총 감점 -{we_total}점</div>'
+        f'<div style="font-size:12px;color:#6b7280;margin-top:4px;">100점 만점 기준 예상 점수: {max(0, 100-we_total)}점</div>'
+        f'</div>', unsafe_allow_html=True
+    )
+
+    we_table_rows = [
+        [safe(r["항목"]), safe(r["상태"]),
+         badge_html(r["_lv"], safe(r["감점"])), safe(r["비고"])]
+        for r in we_rows
+    ]
+    st.markdown(
+        build_table(["항목", "상태", "감점", "비고"], we_table_rows),
+        unsafe_allow_html=True
+    )
+
+    we_buf = BytesIO()
+    we_df = pd.DataFrame([
+        {"항목": r["항목"], "상태": r["상태"], "감점": r["감점"], "비고": r["비고"]}
+        for r in we_rows
+    ])
+    with pd.ExcelWriter(we_buf, engine="openpyxl") as writer:
+        we_df.to_excel(writer, index=False, sheet_name="워드실기채점결과")
+    we_buf.seek(0)
+
+    st.download_button(
+        label="📥 채점 결과 엑셀 다운로드",
+        data=we_buf,
+        file_name="워드실기채점결과.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+        key="we_download"
+    )
