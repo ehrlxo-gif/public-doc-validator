@@ -166,23 +166,98 @@ def parse_width_mm(s: str | None) -> float | None:
 
 
 # ─────────────────────────────────────────────────────────────
+# 보안: 압축 해제 폭탄(zip bomb) 및 과도한 엔티티 확장 방어
+# ─────────────────────────────────────────────────────────────
+MAX_HWPX_FILE_SIZE = 20 * 1024 * 1024        # 업로드 원본(zip) 최대 20MB
+MAX_UNCOMPRESSED_TOTAL = 100 * 1024 * 1024   # 전체 압축 해제 시 최대 100MB
+MAX_UNCOMPRESSED_SINGLE = 50 * 1024 * 1024   # 개별 항목 최대 50MB
+MAX_COMPRESSION_RATIO = 200                  # 압축 전/후 비율이 이보다 크면 의심(zip bomb 패턴)
+
+
+class HwpxSecurityError(ValueError):
+    """hwpx 파일이 크기·압축률 등 안전 기준을 넘어서 처리를 거부할 때 발생."""
+
+
+def _safe_read_zip_member(zf: zipfile.ZipFile, name: str) -> bytes:
+    """
+    zip 항목을 읽기 전에 압축 해제 후 예상 크기와 압축률을 먼저 검사한다.
+    실제로 압축을 풀기 전에 메타데이터(ZipInfo)만으로 1차 차단하므로,
+    악의적으로 압축률을 극단적으로 높인 파일(zip bomb)에 대한 방어가 된다.
+    """
+    info = zf.getinfo(name)
+
+    if info.file_size > MAX_UNCOMPRESSED_SINGLE:
+        raise HwpxSecurityError(
+            f"'{name}' 항목의 압축 해제 크기({info.file_size / 1024 / 1024:.1f}MB)가 "
+            f"허용 범위(최대 {MAX_UNCOMPRESSED_SINGLE / 1024 / 1024:.0f}MB)를 초과합니다."
+        )
+
+    if info.compress_size > 0:
+        ratio = info.file_size / info.compress_size
+        if ratio > MAX_COMPRESSION_RATIO:
+            raise HwpxSecurityError(
+                f"'{name}' 항목의 압축률({ratio:.0f}배)이 비정상적으로 높습니다. "
+                f"손상되었거나 악의적으로 조작된 파일일 수 있어 처리를 중단합니다."
+            )
+
+    return zf.read(name)
+
+
+def _safe_parse_xml(xml_bytes: bytes, label: str) -> ET.Element:
+    """
+    XML 엔티티 확장(billion laughs 등)을 이용한 서비스 거부 공격을 막기 위해,
+    파싱 전 원문에서 DTD/ENTITY 선언 자체를 거부한다. 정상적인 hwpx 문서는
+    DOCTYPE·ENTITY 선언을 포함하지 않으므로 이 필터로 기능상 손실은 없다.
+    """
+    head = xml_bytes[:2000]
+    if b"<!DOCTYPE" in head or b"<!ENTITY" in head:
+        raise HwpxSecurityError(
+            f"{label}에서 허용되지 않는 DOCTYPE/ENTITY 선언이 발견되어 처리를 중단합니다."
+        )
+    try:
+        return ET.fromstring(xml_bytes)
+    except ET.ParseError as exc:
+        raise HwpxSecurityError(f"{label} 파싱 중 오류가 발생했습니다.") from exc
+
+
+# ─────────────────────────────────────────────────────────────
 # 메인 파서
 # ─────────────────────────────────────────────────────────────
 
 def load_hwpx(file_bytes: bytes) -> HwpxDocument:
-    with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
+    if len(file_bytes) > MAX_HWPX_FILE_SIZE:
+        raise HwpxSecurityError(
+            f"파일 크기({len(file_bytes) / 1024 / 1024:.1f}MB)가 "
+            f"허용 범위(최대 {MAX_HWPX_FILE_SIZE / 1024 / 1024:.0f}MB)를 초과합니다."
+        )
+
+    try:
+        zf = zipfile.ZipFile(BytesIO(file_bytes))
+    except zipfile.BadZipFile as exc:
+        raise HwpxSecurityError("올바른 hwpx(zip) 파일이 아닙니다.") from exc
+
+    with zf:
         names = zf.namelist()
+
+        # 압축 해제 시 총 용량이 과도하면 zip bomb으로 간주해 즉시 차단
+        total_uncompressed = sum(i.file_size for i in zf.infolist())
+        if total_uncompressed > MAX_UNCOMPRESSED_TOTAL:
+            raise HwpxSecurityError(
+                f"압축 해제 시 총 용량({total_uncompressed / 1024 / 1024:.1f}MB)이 "
+                f"허용 범위(최대 {MAX_UNCOMPRESSED_TOTAL / 1024 / 1024:.0f}MB)를 초과합니다. "
+                "손상되었거나 악의적으로 조작된 파일일 수 있습니다."
+            )
 
         section_files = sorted([n for n in names if re.match(r"Contents/section\d+\.xml", n)])
         if not section_files:
             raise ValueError("Contents/section*.xml 을 찾을 수 없습니다. 올바른 HWPX 파일이 아닙니다.")
-        header_bytes = zf.read("Contents/header.xml") if "Contents/header.xml" in names else b""
 
-        section_bytes_list = [zf.read(n) for n in section_files]
+        header_bytes = _safe_read_zip_member(zf, "Contents/header.xml") if "Contents/header.xml" in names else b""
+        section_bytes_list = [_safe_read_zip_member(zf, n) for n in section_files]
         chart_files = [n for n in names if n.startswith("Chart/") and n.endswith(".xml")]
 
-    header_root = ET.fromstring(header_bytes) if header_bytes else None
-    section_roots = [ET.fromstring(b) for b in section_bytes_list]
+    header_root = _safe_parse_xml(header_bytes, "header.xml") if header_bytes else None
+    section_roots = [_safe_parse_xml(b, f"section{i}.xml") for i, b in enumerate(section_bytes_list)]
 
     border_fill_map = _parse_border_fills(header_root) if header_root is not None else {}
     styles = _parse_styles(header_root) if header_root is not None else []

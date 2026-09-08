@@ -10,7 +10,7 @@ import pandas as pd
 import pdfplumber
 import streamlit as st
 
-from hwpx_parser import load_hwpx, extract_instruction_hints
+from hwpx_parser import load_hwpx, extract_instruction_hints, HwpxSecurityError, MAX_HWPX_FILE_SIZE
 
 # ─── 상수 ────────────────────────────────────────────────────
 MAX_FILE_SIZE   = 10 * 1024 * 1024   # 10 MB
@@ -234,6 +234,18 @@ def validate_file(f) -> tuple[bool, str]:
     return True, ""
 
 
+def validate_hwpx_file(f) -> tuple[bool, str]:
+    """hwpx 업로드 파일의 확장자·크기 검증. 실제 내부 구조 검증은 hwpx_parser가 담당."""
+    ext = os.path.splitext(f.name)[1].lower()
+    if ext != ".hwpx":
+        return False, f"'{safe(f.name)}': hwpx 파일만 허용됩니다 (현재: {safe(ext)})"
+    if f.size == 0:
+        return False, f"'{safe(f.name)}': 빈 파일입니다."
+    if f.size > MAX_HWPX_FILE_SIZE:
+        return False, f"'{safe(f.name)}': {f.size/(1024*1024):.1f}MB — 최대 {MAX_HWPX_FILE_SIZE/(1024*1024):.0f}MB 초과"
+    return True, ""
+
+
 @st.cache_data(show_spinner=False)
 def _cached_extract(file_bytes: bytes) -> tuple[str, str]:
     """PDF 바이트를 텍스트로 변환 (캐시됨). (text, error) 반환."""
@@ -407,8 +419,14 @@ def _cached_load_hwpx(file_bytes: bytes):
     try:
         doc = load_hwpx(file_bytes)
         return doc, ""
-    except Exception as exc:
-        return None, f"hwpx 파일을 읽을 수 없습니다: {exc}"
+    except HwpxSecurityError as exc:
+        # 크기·압축률·DOCTYPE 등 보안 기준 위반 — 사유를 그대로 안내해도 안전함
+        # (내부 경로나 스택트레이스가 아니라 우리가 직접 작성한 안내문이기 때문)
+        return None, f"파일이 안전 기준을 벗어나 처리할 수 없습니다: {exc}"
+    except Exception:
+        # 그 외 예외는 원문을 노출하지 않고 일반화된 메시지만 반환
+        # (파이썬 예외 원문에 내부 경로 등 불필요한 정보가 섞여 나올 수 있어 차단)
+        return None, "hwpx 파일을 읽을 수 없습니다. 올바른 hwpx 파일인지 확인해주세요."
 
 
 def get_hwpx_doc(f):
@@ -967,7 +985,10 @@ with we_up_col2:
     answer_hwpx = st.file_uploader("작성한 hwpx 파일", type=["hwpx"], key="we_answer_hwpx")
 
 if instr_pdf and answer_hwpx:
-    if st.button("🔎 자동 대조 실행", use_container_width=True, key="we_autocheck_btn"):
+    hwpx_ok, hwpx_validation_err = validate_hwpx_file(answer_hwpx)
+    if not hwpx_ok:
+        st.error(hwpx_validation_err)
+    elif st.button("🔎 자동 대조 실행", use_container_width=True, key="we_autocheck_btn"):
         instr_text, instr_err = get_text(instr_pdf)
         hwpx_doc, hwpx_err = get_hwpx_doc(answer_hwpx)
 
